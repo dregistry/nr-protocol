@@ -175,10 +175,9 @@ impl Contract {
     ) {
         let mut columns_identifiers = Vec::new();
         let mut rows_identifiers = Vec::new();
-        assert!(
-            !self.is_name_exist(name.clone()),
-            "That's name already exist"
-        );
+        if self.is_name_exist(name.clone()) {
+            env::panic_str("That`s name already exist");
+        }
         for column in &column_data {
             columns_identifiers
                 .push(self.check_identifier(column.to_string().as_bytes().len() as u64));
@@ -208,8 +207,56 @@ impl Contract {
         }
     }
 
-    #[private]
     pub fn change_registry(
+        &mut self,
+        unique_identifier: AccountId,
+        new_row_data: Vec<Value>,
+        new_column_data: Vec<Value>,
+    ) {
+        let _ = self
+            .registries
+            .clone()
+            .iter()
+            .map(|(_, registry_data)| {
+                for data in registry_data {
+                    if data.unique_identifier == unique_identifier {
+                        let mut columns_identifiers = Vec::new();
+                        for identifier in &data.column {
+                            columns_identifiers.push(identifier.unique_identifier)
+                        }
+                        let mut rows_identifiers = Vec::new();
+                        for identifier in &data.row {
+                            rows_identifiers.push(identifier.unique_identifier)
+                        }
+                        let new_data = RegistryData::new(
+                            data.name.clone(),
+                            new_row_data.clone(),
+                            new_column_data.clone(),
+                            data.owner.clone(),
+                            data.dao.clone(),
+                            columns_identifiers,
+                            rows_identifiers,
+                        );
+                        let mut value = 0;
+                        self.registries.entry(data.owner.clone()).and_modify(|x| {
+                            for i in x.clone() {
+                                if i.unique_identifier == unique_identifier {
+                                    x.remove(value);
+                                    x.insert(0, new_data.clone());
+                                    break;
+                                } else {
+                                    value += 1;
+                                }
+                            }
+                        });
+                    }
+                }
+            })
+            .collect::<()>();
+    }
+
+    #[private]
+    pub fn voting_change_registry(
         &mut self,
         unique_identifier: AccountId,
         new_row_data: Vec<Value>,
@@ -310,7 +357,7 @@ impl Contract {
                                 .expect("ERR_NO_PROPOSAL")
                                 .into();
                             let values = self.get_registry(proposal.clone());
-                            self.change_registry(
+                            self.voting_change_registry(
                                 self.get_identifier(proposal.new_registries.clone()),
                                 vec![values.0],
                                 vec![values.1],
@@ -427,7 +474,7 @@ mod tests {
     // }
 
     #[test]
-    fn change_registry() {
+    fn voting_change_registry() {
         // set up the mock context into the testing environment
         let context = get_context(alice());
         testing_env!(context.build());
@@ -467,7 +514,7 @@ mod tests {
     }
 
     #[test]
-    fn test_change_registry() {
+    fn test_voting_change_registry() {
         // set up the mock context into the testing environment
         let context = get_context(alice());
         testing_env!(context.build());
@@ -518,7 +565,7 @@ mod tests {
 
         let new_value = json!({"fruit": "Pineapple","size": "Medium","color": "Yellow"});
 
-        contract.change_registry(
+        contract.voting_change_registry(
             AccountId::from_str("testname.near").unwrap(),
             vec![new_value.clone()],
             vec![new_value.clone()],
