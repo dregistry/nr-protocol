@@ -219,6 +219,10 @@ impl Contract {
             .iter()
             .map(|(_, registry_data)| {
                 for data in registry_data {
+                    let user = env::current_account_id();
+                    if user != data.owner {
+                        env::panic_str("Only owner can change registry!");
+                    }
                     if data.unique_identifier == unique_identifier {
                         let mut columns_identifiers = Vec::new();
                         for identifier in &data.column {
