@@ -307,7 +307,20 @@ pub struct ProposalOutputRegistry {
 pub struct ProposalOutput {
     /// Id of the proposal.
     pub id: u64,
-    pub proposal: Proposal,
+    /// Original proposer.
+    pub proposer: AccountId,
+    /// Description of this proposal.
+    pub description: String,
+    /// Kind of proposal with relevant information.
+    pub kind: ProposalKind,
+    /// Current status of the proposal.
+    pub status: ProposalStatus,
+    /// Count of votes per role per decision: yes / no / spam.
+    pub vote_counts: HashMap<String, [Balance; 3]>,
+    /// Map of who voted and how.
+    pub votes: HashMap<AccountId, Vote>,
+    /// Submission time (for voting period).
+    pub submission_time: U64,
 }
 /// In near-sdk v3, the token was represented by a String, with no other restrictions.
 /// That being said, Sputnik used "" (empty String) as a convention to represent the $NEAR token.
