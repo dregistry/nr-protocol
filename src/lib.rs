@@ -141,6 +141,17 @@ impl RegistryData {
             column,
         }
     }
+
+    pub fn default_registry() -> Self {
+        Self {
+            dao: "".to_string(),
+            name: "".to_string(),
+            owner: "some".to_string().parse().unwrap(),
+            unique_identifier: "some1".to_string().parse().unwrap(),
+            row: vec![],
+            column: vec![],
+        }
+    }
 }
 
 #[near_bindgen]
@@ -172,7 +183,7 @@ impl Contract {
         column_data: Vec<Value>,
         row_data: Vec<Value>,
         name: String,
-    ) {
+    ) -> Value {
         let mut columns_identifiers = Vec::new();
         let mut rows_identifiers = Vec::new();
         if self.is_name_exist(name.clone()) {
@@ -204,6 +215,68 @@ impl Contract {
             self.registries
                 .entry(owner_id)
                 .and_modify(|x| x.push(registry_data.clone()));
+        }
+        self.get_registry_by_name(registry_data.name)
+    }
+
+    pub fn change_registry(
+        &mut self,
+        unique_identifier: AccountId,
+        new_row_data: Vec<Value>,
+        new_column_data: Vec<Value>,
+    ) -> Value {
+        let mut return_data = json!({});
+        let _ = self
+            .registries
+            .clone()
+            .iter()
+            .map(|(_, registry_data)| {
+                for data in registry_data {
+                    if data.unique_identifier == unique_identifier {
+                        let mut columns_identifiers = Vec::new();
+                        for identifier in &data.column {
+                            columns_identifiers.push(identifier.unique_identifier)
+                        }
+                        let mut rows_identifiers = Vec::new();
+                        for identifier in &data.row {
+                            rows_identifiers.push(identifier.unique_identifier)
+                        }
+                        let new_data = RegistryData::new(
+                            data.name.clone(),
+                            new_row_data.clone(),
+                            new_column_data.clone(),
+                            data.owner.clone(),
+                            data.dao.clone(),
+                            columns_identifiers,
+                            rows_identifiers,
+                        );
+                        let mut value = 0;
+                        return_data = self.get_registry_by_name(data.name.clone());
+                        self.registries.entry(data.owner.clone()).and_modify(|x| {
+                            for i in x.clone() {
+                                if i.unique_identifier == unique_identifier {
+                                    x.remove(value);
+                                    x.insert(0, new_data.clone());
+                                    break;
+                                } else {
+                                    value += 1;
+                                }
+                            }
+                        });
+                    }
+                }
+            })
+            .collect::<()>();
+        return_data
+    }
+
+    pub fn delete_registry(&mut self, name: String) {
+        for i in self.registries.clone().iter() {
+            for data in i.1 {
+                if data.name == name {
+                    self.registries.remove(i.0);
+                }
+            }
         }
     }
 
@@ -283,6 +356,10 @@ impl Contract {
             PromiseResult::NotReady => unreachable!(),
             PromiseResult::Successful(val) => {
                 if let Ok(result) = near_sdk::serde_json::from_slice::<u64>(&val) {
+                    if let Some(proposal) = self.proposals.get(&self.last_proposal_id) {
+                        self.proposals.remove(&self.last_proposal_id);
+                        self.proposals.insert(&result, &proposal);
+                    };
                     self.last_proposal_id = result;
                     self.last_proposal_id
                 } else {

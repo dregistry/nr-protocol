@@ -16,7 +16,7 @@
 ```fn new_registry(dao: AccountId)```
 ### in JSON like:
 
-`````'{'{"owner_id": "SOME_OWNER_FOR_THIS_REGISTRY", "column_data": '['{"some_value": "value"}']', "row_data": '['{"some_value": "value"}']', "name": "SOME_NAME"}'`````
+`````'{"owner_id": "SOME_OWNER_FOR_THIS_REGISTRY", "column_data": '['{"some_value": "value"}']', "row_data": '['{"some_value": "value"}']', "name": "SOME_NAME"}'`````
 
 #
 ### Change dao contract for voting

@@ -114,6 +114,10 @@ impl Contract {
         );
     }
 
+    pub fn delete_proposal(&mut self, id: u64) {
+        self.proposals.remove(&id);
+    }
+
     /// Receiving callback after the proposal has been finalized.
     /// If successful, returns bond money to the proposal originator.
     /// If the proposal execution failed (funds didn't transfer or function call failure),
