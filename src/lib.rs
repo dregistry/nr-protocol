@@ -376,8 +376,9 @@ impl Contract {
         match env::promise_result(0) {
             PromiseResult::NotReady => unreachable!(),
             PromiseResult::Successful(val) => {
-                if let Ok(result) = near_sdk::serde_json::from_slice::<ProposalOutput>(&val) {
-                    match result.proposal.status {
+                if let Ok(value) = near_sdk::serde_json::from_slice::<Value>(&val) {
+                    let result: ProposalOutput = serde_json::from_value(value).unwrap();
+                    match result.status {
                         ProposalStatus::InProgress => env::panic_str("PROPOSAL_IN_PROGRESS"),
                         ProposalStatus::Approved => {
                             let mut proposal: Proposal = self
@@ -392,7 +393,7 @@ impl Contract {
                                 vec![values.1],
                             );
                             self.internal_callback_proposal_success(&mut proposal);
-                            (result.clone(), result.proposal.status)
+                            (result.clone(), result.status)
                         }
                         ProposalStatus::Rejected => {
                             let mut proposal: Proposal = self
@@ -401,7 +402,7 @@ impl Contract {
                                 .expect("ERR_NO_PROPOSAL")
                                 .into();
                             self.internal_callback_proposal_fail(&mut proposal);
-                            (result.clone(), result.proposal.status)
+                            (result.clone(), result.status)
                         }
                         ProposalStatus::Removed => {
                             let mut proposal: Proposal = self
@@ -410,7 +411,7 @@ impl Contract {
                                 .expect("ERR_NO_PROPOSAL")
                                 .into();
                             self.internal_callback_proposal_fail(&mut proposal);
-                            (result.clone(), result.proposal.status)
+                            (result.clone(), result.status)
                         }
                         ProposalStatus::Expired => {
                             let mut proposal: Proposal = self
@@ -419,7 +420,7 @@ impl Contract {
                                 .expect("ERR_NO_PROPOSAL")
                                 .into();
                             self.internal_callback_proposal_fail(&mut proposal);
-                            (result.clone(), result.proposal.status)
+                            (result.clone(), result.status)
                         }
                         ProposalStatus::Moved => unreachable!(),
                         ProposalStatus::Failed => {
@@ -429,7 +430,7 @@ impl Contract {
                                 .expect("ERR_NO_PROPOSAL")
                                 .into();
                             self.internal_callback_proposal_fail(&mut proposal);
-                            (result.clone(), result.proposal.status)
+                            (result.clone(), result.status)
                         }
                     }
                 } else {
