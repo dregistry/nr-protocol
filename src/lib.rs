@@ -207,58 +207,6 @@ impl Contract {
         }
     }
 
-    pub fn change_registry(
-        &mut self,
-        unique_identifier: AccountId,
-        new_row_data: Vec<Value>,
-        new_column_data: Vec<Value>,
-    ) {
-        let _ = self
-            .registries
-            .clone()
-            .iter()
-            .map(|(_, registry_data)| {
-                for data in registry_data {
-                    let user = env::current_account_id();
-                    if user != data.owner {
-                        env::panic_str("Only owner can change registry!");
-                    }
-                    if data.unique_identifier == unique_identifier {
-                        let mut columns_identifiers = Vec::new();
-                        for identifier in &data.column {
-                            columns_identifiers.push(identifier.unique_identifier)
-                        }
-                        let mut rows_identifiers = Vec::new();
-                        for identifier in &data.row {
-                            rows_identifiers.push(identifier.unique_identifier)
-                        }
-                        let new_data = RegistryData::new(
-                            data.name.clone(),
-                            new_row_data.clone(),
-                            new_column_data.clone(),
-                            data.owner.clone(),
-                            data.dao.clone(),
-                            columns_identifiers,
-                            rows_identifiers,
-                        );
-                        let mut value = 0;
-                        self.registries.entry(data.owner.clone()).and_modify(|x| {
-                            for i in x.clone() {
-                                if i.unique_identifier == unique_identifier {
-                                    x.remove(value);
-                                    x.insert(0, new_data.clone());
-                                    break;
-                                } else {
-                                    value += 1;
-                                }
-                            }
-                        });
-                    }
-                }
-            })
-            .collect::<()>();
-    }
-
     #[private]
     pub fn voting_change_registry(
         &mut self,
@@ -352,7 +300,7 @@ impl Contract {
             PromiseResult::NotReady => unreachable!(),
             PromiseResult::Successful(val) => {
                 if let Ok(result) = near_sdk::serde_json::from_slice::<ProposalOutput>(&val) {
-                    match result.proposal.status {
+                    match result.status {
                         ProposalStatus::InProgress => env::panic_str("PROPOSAL_IN_PROGRESS"),
                         ProposalStatus::Approved => {
                             let mut proposal: Proposal = self
@@ -367,7 +315,7 @@ impl Contract {
                                 vec![values.1],
                             );
                             self.internal_callback_proposal_success(&mut proposal);
-                            (result.clone(), result.proposal.status)
+                            (result.clone(), result.status)
                         }
                         ProposalStatus::Rejected => {
                             let mut proposal: Proposal = self
@@ -376,7 +324,7 @@ impl Contract {
                                 .expect("ERR_NO_PROPOSAL")
                                 .into();
                             self.internal_callback_proposal_fail(&mut proposal);
-                            (result.clone(), result.proposal.status)
+                            (result.clone(), result.status)
                         }
                         ProposalStatus::Removed => {
                             let mut proposal: Proposal = self
@@ -385,7 +333,7 @@ impl Contract {
                                 .expect("ERR_NO_PROPOSAL")
                                 .into();
                             self.internal_callback_proposal_fail(&mut proposal);
-                            (result.clone(), result.proposal.status)
+                            (result.clone(), result.status)
                         }
                         ProposalStatus::Expired => {
                             let mut proposal: Proposal = self
@@ -394,7 +342,7 @@ impl Contract {
                                 .expect("ERR_NO_PROPOSAL")
                                 .into();
                             self.internal_callback_proposal_fail(&mut proposal);
-                            (result.clone(), result.proposal.status)
+                            (result.clone(), result.status)
                         }
                         ProposalStatus::Moved => unreachable!(),
                         ProposalStatus::Failed => {
@@ -404,7 +352,7 @@ impl Contract {
                                 .expect("ERR_NO_PROPOSAL")
                                 .into();
                             self.internal_callback_proposal_fail(&mut proposal);
-                            (result.clone(), result.proposal.status)
+                            (result.clone(), result.status)
                         }
                     }
                 } else {
